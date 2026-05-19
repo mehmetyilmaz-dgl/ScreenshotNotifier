@@ -89,15 +89,11 @@ class ScreenshotAccessibilityService : AccessibilityService() {
     }
 
     private fun takeScreenshotNow() {
-        // Bildirim çekmecesini kapat, sonra screenshot al
-        performGlobalAction(GLOBAL_ACTION_RECENTS)
-        performGlobalAction(GLOBAL_ACTION_HOME)
-
-        // Kısa gecikme ile ekran görüntüsü al (bildirim kapanması için)
+        // Bildirim paneli kapandıktan sonra mevcut ekranın görüntüsünü al
         android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({
             performGlobalAction(GLOBAL_ACTION_TAKE_SCREENSHOT)
             Toast.makeText(this, getString(R.string.screenshot_taken), Toast.LENGTH_SHORT).show()
-        }, 300)
+        }, 600)
     }
 
     override fun onAccessibilityEvent(event: AccessibilityEvent?) {}
