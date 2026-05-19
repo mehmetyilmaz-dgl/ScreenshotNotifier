@@ -5,7 +5,7 @@
     <string name="channel_name">Ekran Görüntüsü</string>
     <string name="channel_description">Ekran görüntüsü alma bildirimi</string>
     <string name="notification_title">Ekran Görüntüsü Hazır</string>
-    <string name="notification_text">Ekran görüntüsü almak için dokunun</string>
+    <string name="notification_text">Sallayın veya butona dokunun</string>
     <string name="take_screenshot">Ekran Görüntüsü Al</string>
     <string name="service_running">Servis çalışıyor</string>
     <string name="service_not_running">Servis çalışmıyor - Erişilebilirlik ayarlarını açın</string>

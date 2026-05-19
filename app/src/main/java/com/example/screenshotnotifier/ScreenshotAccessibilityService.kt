@@ -9,18 +9,30 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
+import android.hardware.Sensor
+import android.hardware.SensorEvent
+import android.hardware.SensorEventListener
+import android.hardware.SensorManager
 import android.os.Build
+import android.os.SystemClock
 import android.view.accessibility.AccessibilityEvent
 import android.widget.Toast
+import kotlin.math.sqrt
 
-class ScreenshotAccessibilityService : AccessibilityService() {
+class ScreenshotAccessibilityService : AccessibilityService(), SensorEventListener {
 
     companion object {
         const val ACTION_TAKE_SCREENSHOT = "com.example.screenshotnotifier.TAKE_SCREENSHOT"
         const val CHANNEL_ID = "screenshot_channel"
         const val NOTIFICATION_ID = 1001
+        private const val SHAKE_THRESHOLD = 13f       // m/s² — ne kadar sert sallanmalı
+        private const val SHAKE_COOLDOWN_MS = 2000L   // iki sallama arası minimum süre
         var instance: ScreenshotAccessibilityService? = null
     }
+
+    private lateinit var sensorManager: SensorManager
+    private var accelerometer: Sensor? = null
+    private var lastShakeTime = 0L
 
     private val screenshotReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context, intent: Intent) {
@@ -36,7 +48,37 @@ class ScreenshotAccessibilityService : AccessibilityService() {
         createNotificationChannel()
         registerBroadcastReceiver()
         showPersistentNotification()
+        startShakeDetection()
     }
+
+    private fun startShakeDetection() {
+        sensorManager = getSystemService(SENSOR_SERVICE) as SensorManager
+        accelerometer = sensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER)
+        accelerometer?.let {
+            sensorManager.registerListener(this, it, SensorManager.SENSOR_DELAY_GAME)
+        }
+    }
+
+    override fun onSensorChanged(event: SensorEvent) {
+        if (event.sensor.type != Sensor.TYPE_ACCELEROMETER) return
+
+        val x = event.values[0]
+        val y = event.values[1]
+        val z = event.values[2]
+
+        // Yerçekimi etkisini çıkar ve ivmeyi hesapla
+        val acceleration = sqrt(x * x + y * y + z * z) - SensorManager.GRAVITY_EARTH
+
+        if (acceleration > SHAKE_THRESHOLD) {
+            val now = SystemClock.elapsedRealtime()
+            if (now - lastShakeTime > SHAKE_COOLDOWN_MS) {
+                lastShakeTime = now
+                takeScreenshotNow()
+            }
+        }
+    }
+
+    override fun onAccuracyChanged(sensor: Sensor?, accuracy: Int) {}
 
     private fun registerBroadcastReceiver() {
         val filter = IntentFilter(ACTION_TAKE_SCREENSHOT)
@@ -89,7 +131,6 @@ class ScreenshotAccessibilityService : AccessibilityService() {
     }
 
     private fun takeScreenshotNow() {
-        // Bildirim paneli kapandıktan sonra mevcut ekranın görüntüsünü al
         android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({
             performGlobalAction(GLOBAL_ACTION_TAKE_SCREENSHOT)
             Toast.makeText(this, getString(R.string.screenshot_taken), Toast.LENGTH_SHORT).show()
@@ -103,11 +144,10 @@ class ScreenshotAccessibilityService : AccessibilityService() {
     override fun onDestroy() {
         super.onDestroy()
         instance = null
+        sensorManager.unregisterListener(this)
         try {
             unregisterReceiver(screenshotReceiver)
-        } catch (e: Exception) {
-            // Receiver zaten kayıtlı değil
-        }
+        } catch (e: Exception) {}
         val manager = getSystemService(NotificationManager::class.java)
         manager.cancel(NOTIFICATION_ID)
     }
