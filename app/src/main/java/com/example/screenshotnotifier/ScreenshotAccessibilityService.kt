@@ -52,10 +52,15 @@ class ScreenshotAccessibilityService : AccessibilityService(), SensorEventListen
     }
 
     private fun startShakeDetection() {
-        sensorManager = getSystemService(SENSOR_SERVICE) as SensorManager
-        accelerometer = sensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER)
-        accelerometer?.let {
-            sensorManager.registerListener(this, it, SensorManager.SENSOR_DELAY_GAME)
+        try {
+            sensorManager = getSystemService(SENSOR_SERVICE) as SensorManager
+            accelerometer = sensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER)
+            accelerometer?.let {
+                // SENSOR_DELAY_UI: MIUI'da GAME frekansı servisi öldürüyor
+                sensorManager.registerListener(this, it, SensorManager.SENSOR_DELAY_UI)
+            }
+        } catch (e: Exception) {
+            // Sensör başlatılamazsa butona basma yöntemi çalışmaya devam eder
         }
     }
 
